@@ -29,16 +29,20 @@ ENV PYTHONDONTWRITEBYTECODE 1
 # Set up a working directory
 WORKDIR $HOME/app
 
-# Copy pyproject.toml and other necessary files for installation
-COPY --chown=user:user pyproject.toml ./
-COPY --chown=user:user README.md ./
-COPY --chown=user:user app ./app
+# Copy dependency files first to maximize Docker layer cache hits.
+COPY --chown=user:user requirements-cpu.txt ./
 
 # Install the project's dependencies
 RUN rm -rf build && \
     pip install --upgrade pip setuptools wheel && \
-    pip install --no-build-isolation ".[cpu]" && \
+    pip install --no-build-isolation \
+      --index-url https://download.pytorch.org/whl/cpu \
+      --extra-index-url https://pypi.org/simple \
+      -r requirements-cpu.txt && \
     python -m spacy download en_core_web_sm
+
+# Copy app source after dependencies so code-only changes keep cached dependency layers.
+COPY --chown=user:user app ./app
 
 COPY --chown=user:user ./config/scanners.yml ./config/scanners.yml
 COPY --chown=user:user entrypoint.sh ./entrypoint.sh
