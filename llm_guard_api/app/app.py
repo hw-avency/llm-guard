@@ -43,6 +43,7 @@ from .schemas import (
     AnalyzeOutputResponse,
     AnalyzePromptRequest,
     AnalyzePromptResponse,
+    DebugScannersResponse,
     ScanOutputRequest,
     ScanOutputResponse,
     ScanPromptRequest,
@@ -195,6 +196,22 @@ def register_routes(
     @limiter.exempt
     async def read_liveliness():
         return JSONResponse({"status": "ready"})
+
+    @app.get(
+        "/debug/scanners",
+        tags=["Debug"],
+        response_model=DebugScannersResponse,
+        status_code=status.HTTP_200_OK,
+        description="Returns scanner configuration loaded from scanners.yml",
+    )
+    @limiter.exempt
+    async def read_scanners_configuration(
+        _: Annotated[bool, Depends(check_auth)],
+    ) -> DebugScannersResponse:
+        return DebugScannersResponse(
+            input_scanners=[scanner.model_dump() for scanner in config.input_scanners],
+            output_scanners=[scanner.model_dump() for scanner in config.output_scanners],
+        )
 
     @app.post(
         "/analyze/output",
