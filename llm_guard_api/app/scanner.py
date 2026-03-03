@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import time
 from copy import deepcopy
 from importlib import import_module
@@ -22,7 +23,10 @@ from llm_guard.input_scanners.toxicity import DEFAULT_MODEL as TOXICITY_MODEL
 from llm_guard.model import Model
 from llm_guard.output_scanners.base import Scanner as OutputScanner
 from llm_guard.output_scanners.bias import DEFAULT_MODEL as BIAS_MODEL
-from llm_guard.output_scanners.malicious_urls import DEFAULT_MODEL as MALICIOUS_URLS_MODEL
+from llm_guard.output_scanners.malicious_urls import (
+    DEFAULT_MODEL as MALICIOUS_URLS_MODEL,
+    MaliciousURLs as MaliciousURLsScanner,
+)
 from llm_guard.output_scanners.no_refusal import DEFAULT_MODEL as NO_REFUSAL_MODEL
 from llm_guard.output_scanners.relevance import MODEL_EN_BGE_SMALL as RELEVANCE_MODEL
 from llm_guard.vault import Vault
@@ -286,7 +290,18 @@ def _get_output_scanner(
             )
             return scanner_class(**scanner_config)
         except (ImportError, AttributeError):
-            raise error
+            LOGGER.warning(
+                "URLHaus scanner unavailable in installed llm-guard package, falling back to MaliciousURLs",
+                scanner=scanner_name,
+            )
+
+            fallback_params = {
+                key: value
+                for key, value in scanner_config.items()
+                if key in inspect.signature(MaliciousURLsScanner.__init__).parameters
+            }
+
+            return output_scanners.MaliciousURLs(**fallback_params)
 
 
 class InputIsInvalid(Exception):
