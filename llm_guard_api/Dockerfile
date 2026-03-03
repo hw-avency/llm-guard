@@ -32,14 +32,14 @@ WORKDIR $HOME/app
 # Copy pyproject.toml and other necessary files for installation
 COPY --chown=user:user pyproject.toml ./
 COPY --chown=user:user README.md ./
-COPY --chown=user:user app ./app
 
 # Install the project's dependencies
 RUN rm -rf build && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir --no-build-isolation ".[cpu]"
+    pip install --upgrade pip setuptools wheel && \
+    pip install --no-build-isolation ".[cpu]" && \
+    python -m spacy download en_core_web_sm
 
-RUN python -m spacy download en_core_web_sm
+COPY --chown=user:user app ./app
 
 COPY --chown=user:user ./config/scanners.yml ./config/scanners.yml
 COPY --chown=user:user entrypoint.sh ./entrypoint.sh
