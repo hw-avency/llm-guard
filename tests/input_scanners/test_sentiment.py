@@ -34,3 +34,19 @@ def test_scan(prompt, expected_valid, expected_score):
     assert sanitized_prompt == prompt
     assert valid == expected_valid
     assert score == expected_score
+
+
+def test_scan_with_zero_threshold_and_neutral_sentiment_does_not_raise():
+    scanner = Sentiment.__new__(Sentiment)
+    scanner._threshold = 0.0
+    scanner._sentiment_analyzer = type(
+        "NeutralSentimentAnalyzer",
+        (),
+        {"polarity_scores": lambda self, prompt: {"compound": 0.0}},
+    )()
+
+    sanitized_prompt, valid, score = scanner.scan("neutral prompt")
+
+    assert sanitized_prompt == "neutral prompt"
+    assert valid is True
+    assert score == 0.0

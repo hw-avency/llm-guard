@@ -44,6 +44,7 @@ pip install llm-guard
 
 - Get started with [ChatGPT and LLM Guard](./examples/openai_api.py).
 - Deploy LLM Guard as [API](https://protectai.github.io/llm-guard/api/overview/)
+- Build and deploy `llm_guard_api` to Google Cloud Run using this repository guide: [Cloud Run deployment](./CLOUD_RUN_DEPLOYMENT.md).
 
 ## Supported scanners
 

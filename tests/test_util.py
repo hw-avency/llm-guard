@@ -18,6 +18,7 @@ from llm_guard.util import (
         (0.4, 0.5, -0.2),
         (0.6, 0.5, 0.2),
         (0.8, 0.5, 0.6),
+        (0.0, 0.0, 0.0),
     ],
 )
 def test_calculate_risk_score_calculates_correctly(score, threshold, expected_risk_score):

@@ -37,7 +37,7 @@ class Sentiment(Scanner):
 
         sentiment_score = self._sentiment_analyzer.polarity_scores(prompt)
         sentiment_score_compound = sentiment_score["compound"]
-        if sentiment_score_compound > self._threshold:
+        if sentiment_score_compound >= self._threshold:
             LOGGER.debug(
                 "Sentiment score is below the threshold",
                 sentiment_score=sentiment_score_compound,
