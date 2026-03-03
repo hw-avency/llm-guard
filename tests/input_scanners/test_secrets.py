@@ -14,13 +14,13 @@ from llm_guard.input_scanners.secrets import Secrets
         ),  # Prompt without sensitive data
         (
             'I need to pass a key\naws_secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"',  # gitleaks:allow
-            'I need to pass a key\naws_secret_access_key="************"',
+            'I need to pass a key\naws_secret_access_key="******"',
             False,
             1.0,
         ),  # Prompt with key
         (
             "My github token is: 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",  # gitleaks:allow
-            "My github token is: ************",
+            "My github token is: ******",
             False,
             1.0,
         ),  # Prompt with Github token
@@ -52,3 +52,18 @@ def test_scan(prompt, expected_prompt, expected_valid, expected_score):
     assert sanitized_prompt == expected_prompt
     assert valid == expected_valid
     assert score == expected_score
+
+
+def test_scan_multiple_secrets_in_one_prompt():
+    scanner = Secrets()
+
+    prompt = (
+        'name=John aws_secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" '
+        "and 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"
+    )  # gitleaks:allow
+
+    sanitized_prompt, valid, score = scanner.scan(prompt)
+
+    assert sanitized_prompt == 'name=John aws_secret_access_key="******" and ******'
+    assert valid is False
+    assert score == 1.0
