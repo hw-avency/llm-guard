@@ -106,8 +106,10 @@ gcloud run services describe "$SERVICE" \
 Then test the health endpoint:
 
 ```bash
-curl "$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')/health"
+curl "$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')/healthz"
 ```
+
+> Note: Cloud Run injects the `PORT` environment variable. The container entrypoint reads `PORT` (fallback `8000`) so the service binds to the platform-provided port.
 
 ## 8) Optional: deploy with environment variables
 
@@ -126,5 +128,5 @@ gcloud run deploy "$SERVICE" \
 ```bash
 docker build -t llm-guard-api:local ./llm_guard_api
 docker run --rm -p 8000:8000 llm-guard-api:local
-curl http://localhost:8000/health
+curl http://localhost:8000/healthz
 ```
