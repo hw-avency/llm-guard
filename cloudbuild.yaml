@@ -1,0 +1,21 @@
+# Cloud Build config for building and pushing llm_guard_api.
+#
+# This config intentionally sets a valid logs behavior so builds also work
+# when a custom service account is used.
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_IMAGE_URI}
+      - ./llm_guard_api
+
+images:
+  - ${_IMAGE_URI}
+
+options:
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+
+substitutions:
+  _IMAGE_URI: europe-west3-docker.pkg.dev/$PROJECT_ID/llm-guard/llm-guard-api:latest
