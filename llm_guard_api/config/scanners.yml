@@ -1,5 +1,5 @@
 app:
-  name: ${APP_NAME:LLM Guard API}
+  name: "TEST SCANNER - LLM GUARD"
   log_level: ${LOG_LEVEL:INFO}
   log_json: ${LOG_JSON:true}
   scan_fail_fast: ${SCAN_FAIL_FAST:false}
