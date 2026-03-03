@@ -1,5 +1,6 @@
 import asyncio
 import time
+from copy import deepcopy
 from typing import Dict, List, Optional
 
 import structlog
@@ -51,7 +52,7 @@ def get_input_scanners(scanners: List[ScannerConfig], vault: Vault) -> List[Inpu
         input_scanners_loaded.append(
             _get_input_scanner(
                 scanner.type,
-                scanner.params,
+                deepcopy(scanner.params),
                 vault=vault,
             )
         )
@@ -69,7 +70,7 @@ def get_output_scanners(scanners: List[ScannerConfig], vault: Vault) -> List[Out
         output_scanners_loaded.append(
             _get_output_scanner(
                 scanner.type,
-                scanner.params,
+                deepcopy(scanner.params),
                 vault=vault,
             )
         )
