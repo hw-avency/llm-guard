@@ -14,6 +14,7 @@ from .json import JSON
 from .language import Language
 from .language_same import LanguageSame
 from .malicious_urls import MaliciousURLs
+from .malicious_urls_urlhaus import MaliciousURLs_URLHaus
 from .no_refusal import NoRefusal, NoRefusalLight
 from .reading_time import ReadingTime
 from .regex import Regex
@@ -76,6 +77,9 @@ def get_scanner_by_name(scanner_name: str, scanner_config: Optional[Dict] = None
 
     if scanner_name == "MaliciousURLs":
         return MaliciousURLs(**scanner_config)
+
+    if scanner_name == "MaliciousURLs_URLHaus":
+        return MaliciousURLs_URLHaus(**scanner_config)
 
     if scanner_name == "NoRefusal":
         return NoRefusal(**scanner_config)

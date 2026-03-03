@@ -147,6 +147,8 @@ output_scanners:
   - type: MaliciousURLs
     params:
       threshold: 0.75
+  - type: MaliciousURLs_URLHaus
+    params: {}
 #  - type: NoRefusal
 #    params:
 #      threshold: 0.9

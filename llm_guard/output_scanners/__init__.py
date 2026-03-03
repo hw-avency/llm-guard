@@ -14,6 +14,7 @@ from .json import JSON
 from .language import Language
 from .language_same import LanguageSame
 from .malicious_urls import MaliciousURLs
+from .malicious_urls_urlhaus import MaliciousURLs_URLHaus
 from .no_refusal import NoRefusal, NoRefusalLight
 from .reading_time import ReadingTime
 from .regex import Regex
@@ -37,6 +38,7 @@ __all__ = [
     "Language",
     "LanguageSame",
     "MaliciousURLs",
+    "MaliciousURLs_URLHaus",
     "NoRefusal",
     "NoRefusalLight",
     "ReadingTime",
