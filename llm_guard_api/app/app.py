@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import json
 import os
 import time
 from typing import Annotated, Callable, List
@@ -128,8 +129,8 @@ def create_app() -> FastAPI:
     configure_otel(config.app.name, config.tracing, config.metrics)
 
     vault = Vault()
-    input_scanners_func = _get_input_scanners_function(config, vault)
-    output_scanners_func = _get_output_scanners_function(config, vault)
+    input_scanners_func = _get_input_scanners_function(config, vault, config_file)
+    output_scanners_func = _get_output_scanners_function(config, vault, config_file)
 
     if config.app.scan_fail_fast:
         LOGGER.debug("Scan fail_fast mode is enabled")
@@ -184,36 +185,65 @@ def _check_auth_function(auth_config: AuthConfig) -> callable:
     return check_auth
 
 
-def _get_input_scanners_function(config: Config, vault: Vault) -> Callable:
+def _config_signature(config: Config) -> str:
+    """Build a stable signature to detect scanner config changes."""
+    return json.dumps(config.model_dump(), sort_keys=True, default=str)
+
+
+def _get_input_scanners_function(config: Config, vault: Vault, config_file: str) -> Callable:
     scanners = []
+    loaded_signature = _config_signature(config)
     if not config.app.lazy_load:
         LOGGER.debug("Loading input scanners")
         scanners = get_input_scanners(config.input_scanners, vault)
 
     def get_cached_scanners() -> List[InputScanner]:
         nonlocal scanners
+        nonlocal loaded_signature
 
-        if not scanners and config.app.lazy_load:
+        latest_config = get_config(config_file)
+        effective_config = latest_config if latest_config is not None else config
+        latest_signature = _config_signature(effective_config)
+
+        if loaded_signature != latest_signature:
+            LOGGER.debug("Reloading input scanners after config change")
+            scanners = get_input_scanners(effective_config.input_scanners, vault)
+            loaded_signature = latest_signature
+            return scanners
+
+        if not scanners and effective_config.app.lazy_load:
             LOGGER.debug("Lazy loading input scanners")
-            scanners = get_input_scanners(config.input_scanners, vault)
+            scanners = get_input_scanners(effective_config.input_scanners, vault)
 
         return scanners
 
     return get_cached_scanners
 
 
-def _get_output_scanners_function(config: Config, vault: Vault) -> Callable:
+def _get_output_scanners_function(config: Config, vault: Vault, config_file: str) -> Callable:
     scanners = []
+    loaded_signature = _config_signature(config)
     if not config.app.lazy_load:
         LOGGER.debug("Loading output scanners")
         scanners = get_output_scanners(config.output_scanners, vault)
 
     def get_cached_scanners() -> List[OutputScanner]:
         nonlocal scanners
+        nonlocal loaded_signature
 
-        if not scanners and config.app.lazy_load:
+        latest_config = get_config(config_file)
+        effective_config = latest_config if latest_config is not None else config
+        latest_signature = _config_signature(effective_config)
+
+        if loaded_signature != latest_signature:
+            LOGGER.debug("Reloading output scanners after config change")
+            scanners = get_output_scanners(effective_config.output_scanners, vault)
+            loaded_signature = latest_signature
+            return scanners
+
+        if not scanners and effective_config.app.lazy_load:
             LOGGER.debug("Lazy loading output scanners")
-            scanners = get_output_scanners(config.output_scanners, vault)
+            scanners = get_output_scanners(effective_config.output_scanners, vault)
 
         return scanners
 
