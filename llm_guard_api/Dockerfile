@@ -33,7 +33,7 @@ COPY --chown=user:user README.md ./
 COPY --chown=user:user app ./app
 
 # Install the project's dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir --no-build-isolation ".[cpu]"
 
 RUN python -m spacy download en_core_web_sm
