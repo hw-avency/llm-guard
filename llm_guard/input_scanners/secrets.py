@@ -6,7 +6,6 @@ import tempfile
 
 from detect_secrets.core.secrets_collection import SecretsCollection
 from detect_secrets.settings import transient_settings
-from presidio_anonymizer.core.text_replace_builder import TextReplaceBuilder
 
 from llm_guard.util import get_logger
 
@@ -471,7 +470,53 @@ class Secrets(Scanner):
             secrets.scan_file(str(temp_file.name))
 
         secret_types = []
-        text_replace_builder = TextReplaceBuilder(original_text=prompt)
+        secret_positions: list[tuple[int, int]] = []
+
+        line_offsets: list[int] = []
+        char_offset = 0
+        for line in prompt.splitlines(keepends=True):
+            line_offsets.append(char_offset)
+            char_offset += len(line)
+
+        def _is_overlapping(start: int, end: int) -> bool:
+            return any(
+                start < existing_end and end > existing_start
+                for existing_start, existing_end in secret_positions
+            )
+
+        def _find_secret_position(
+            secret_value: str, line_number: int | None
+        ) -> tuple[int, int] | None:
+            if not secret_value:
+                return None
+
+            candidate_starts: list[int] = []
+
+            if line_number is not None and 1 <= line_number <= len(line_offsets):
+                line_start = line_offsets[line_number - 1]
+                line_end = (
+                    line_offsets[line_number]
+                    if line_number < len(line_offsets)
+                    else len(prompt)
+                )
+                line_text = prompt[line_start:line_end]
+                start_idx = line_text.find(secret_value)
+                while start_idx != -1:
+                    candidate_starts.append(line_start + start_idx)
+                    start_idx = line_text.find(secret_value, start_idx + 1)
+            else:
+                start_idx = prompt.find(secret_value)
+                while start_idx != -1:
+                    candidate_starts.append(start_idx)
+                    start_idx = prompt.find(secret_value, start_idx + 1)
+
+            for start_idx in candidate_starts:
+                end_idx = start_idx + len(secret_value)
+                if not _is_overlapping(start_idx, end_idx):
+                    return start_idx, end_idx
+
+            return None
+
         for file in secrets.files:
             for found_secret in secrets[file]:
                 if found_secret.secret_value is None:
@@ -479,23 +524,32 @@ class Secrets(Scanner):
 
                 secret_types.append(found_secret.type)
 
-                character_start_index = prompt.find(found_secret.secret_value, None, None)
-                character_end_index = character_start_index + len(str(found_secret.secret_value))
-                secret_value = text_replace_builder.get_text_in_position(
-                    character_start_index, character_end_index
+                secret_value = str(found_secret.secret_value)
+                secret_position = _find_secret_position(
+                    secret_value,
+                    getattr(found_secret, "line_number", None),
                 )
 
-                text_replace_builder.replace_text_get_insertion_index(
-                    self.redact_value(secret_value, self._redact_mode),
-                    character_start_index,
-                    character_end_index,
-                )
+                if secret_position is not None:
+                    secret_positions.append(secret_position)
+
+        sanitized_prompt = prompt
+        for character_start_index, character_end_index in sorted(
+            secret_positions, reverse=True
+        ):
+            secret_value = sanitized_prompt[character_start_index:character_end_index]
+            redacted_secret = self.redact_value(secret_value, self._redact_mode)
+            sanitized_prompt = (
+                sanitized_prompt[:character_start_index]
+                + redacted_secret
+                + sanitized_prompt[character_end_index:]
+            )
 
         os.remove(temp_file.name)
 
         if secret_types:
             LOGGER.warning("Detected secrets in prompt", secret_types=secret_types)
-            return text_replace_builder.output_text, False, 1.0
+            return sanitized_prompt, False, 1.0
 
         LOGGER.debug("No secrets detected in the prompt")
 
