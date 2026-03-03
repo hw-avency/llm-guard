@@ -23,10 +23,7 @@ from llm_guard.input_scanners.toxicity import DEFAULT_MODEL as TOXICITY_MODEL
 from llm_guard.model import Model
 from llm_guard.output_scanners.base import Scanner as OutputScanner
 from llm_guard.output_scanners.bias import DEFAULT_MODEL as BIAS_MODEL
-from llm_guard.output_scanners.malicious_urls import (
-    DEFAULT_MODEL as MALICIOUS_URLS_MODEL,
-    MaliciousURLs as MaliciousURLsScanner,
-)
+from llm_guard.output_scanners.malicious_urls import DEFAULT_MODEL as MALICIOUS_URLS_MODEL
 from llm_guard.output_scanners.no_refusal import DEFAULT_MODEL as NO_REFUSAL_MODEL
 from llm_guard.output_scanners.relevance import MODEL_EN_BGE_SMALL as RELEVANCE_MODEL
 from llm_guard.vault import Vault
@@ -273,35 +270,51 @@ def _get_output_scanner(
         _configure_model(EMOTION_DETECTION_MODEL, scanner_config)
         scanner_config["model"] = EMOTION_DETECTION_MODEL
 
+    if scanner_name == "MaliciousURLs_URLHaus":
+        scanner_class_candidates = [
+            ("llm_guard.output_scanners.malicious_urls_urlhaus", "MaliciousURLs_URLHaus"),
+            ("llm_guard.output_scanners.malicious_urls_urlhaus", "MaliciousURLsURLHaus"),
+            ("llm_guard.output_scanners", "MaliciousURLs_URLHaus"),
+            ("llm_guard.output_scanners", "MaliciousURLsURLHaus"),
+        ]
+
+        for module_path, class_name in scanner_class_candidates:
+            try:
+                scanner_class = getattr(import_module(module_path), class_name)
+            except (ImportError, AttributeError):
+                continue
+
+            signature_parameters = inspect.signature(scanner_class.__init__).parameters
+            accepts_kwargs = any(
+                parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in signature_parameters.values()
+            )
+            scanner_params = (
+                scanner_config
+                if accepts_kwargs
+                else {
+                    key: value
+                    for key, value in scanner_config.items()
+                    if key in signature_parameters
+                }
+            )
+            LOGGER.info(
+                "Constructing URLHaus scanner directly",
+                scanner=scanner_name,
+                module=module_path,
+                class_name=class_name,
+            )
+            return scanner_class(**scanner_params)
+
+        raise ValueError(
+            "Scanner 'MaliciousURLs_URLHaus' is configured but is unavailable in the installed llm-guard package. "
+            "Please install a llm-guard version that includes llm_guard.output_scanners.malicious_urls_urlhaus."
+        )
+
     try:
         return output_scanners.get_scanner_by_name(scanner_name, scanner_config)
-    except ValueError as error:
-        if scanner_name != "MaliciousURLs_URLHaus" or "Unknown scanner name" not in str(error):
-            raise
-
-        try:
-            scanner_class = getattr(
-                import_module("llm_guard.output_scanners.malicious_urls_urlhaus"),
-                "MaliciousURLs_URLHaus",
-            )
-            LOGGER.warning(
-                "Output scanner missing from util mapping, constructing scanner directly",
-                scanner=scanner_name,
-            )
-            return scanner_class(**scanner_config)
-        except (ImportError, AttributeError):
-            LOGGER.warning(
-                "URLHaus scanner unavailable in installed llm-guard package, falling back to MaliciousURLs",
-                scanner=scanner_name,
-            )
-
-            fallback_params = {
-                key: value
-                for key, value in scanner_config.items()
-                if key in inspect.signature(MaliciousURLsScanner.__init__).parameters
-            }
-
-            return output_scanners.MaliciousURLs(**fallback_params)
+    except ValueError:
+        raise
 
 
 class InputIsInvalid(Exception):
