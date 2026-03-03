@@ -39,6 +39,9 @@ RUN rm -rf build && \
     pip install --no-build-isolation -r requirements-cpu.txt && \
     python -m spacy download en_core_web_sm
 
+# Smoke test dependency layer to ensure expected runtime imports and CPU-only torch
+RUN python -c "import fastapi; import llm_guard; import torch; assert torch.cuda.is_available() is False"
+
 # Copy application code after dependency installation so code-only changes
 # do not invalidate the pip-install cache layer
 COPY --chown=user:user app ./app
