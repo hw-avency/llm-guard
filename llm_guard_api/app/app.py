@@ -81,7 +81,7 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json" if is_debug else None,  # hide docs in production
     )
 
-    register_routes(app, config, input_scanners_func, output_scanners_func)
+    register_routes(app, config, config_file, input_scanners_func, output_scanners_func)
 
     instrument_app(app)
 
@@ -162,6 +162,7 @@ def _get_output_scanners_function(config: Config, vault: Vault) -> Callable:
 def register_routes(
     app: FastAPI,
     config: Config,
+    config_file: str,
     input_scanners_func: Callable,
     output_scanners_func: Callable,
 ):
@@ -195,6 +196,24 @@ def register_routes(
     @limiter.exempt
     async def read_liveliness():
         return JSONResponse({"status": "ready"})
+
+    @app.get("/debug/scanners", tags=["Debug"])
+    async def read_scanners_config(_: Annotated[bool, Depends(check_auth)]):
+        return JSONResponse(
+            {
+                "config_file": config_file,
+                "scanners": {
+                    "input_scanners": [
+                        scanner.model_dump(exclude_none=True)
+                        for scanner in config.input_scanners
+                    ],
+                    "output_scanners": [
+                        scanner.model_dump(exclude_none=True)
+                        for scanner in config.output_scanners
+                    ],
+                },
+            }
+        )
 
     @app.post(
         "/analyze/output",
