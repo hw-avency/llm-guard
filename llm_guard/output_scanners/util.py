@@ -8,6 +8,7 @@ from .base import Scanner
 from .bias import Bias
 from .code import Code
 from .deanonymize import Deanonymize
+from .emotion_detection import EmotionDetection
 from .factual_consistency import FactualConsistency
 from .gibberish import Gibberish
 from .json import JSON
@@ -56,6 +57,9 @@ def get_scanner_by_name(scanner_name: str, scanner_config: Optional[Dict] = None
 
     if scanner_name == "Deanonymize":
         return Deanonymize(**scanner_config)
+
+    if scanner_name == "EmotionDetection":
+        return EmotionDetection(**scanner_config)
 
     if scanner_name == "FactualConsistency":
         return FactualConsistency(**scanner_config)

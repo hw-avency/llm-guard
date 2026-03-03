@@ -7,6 +7,7 @@ from .ban_substrings import BanSubstrings
 from .ban_topics import BanTopics
 from .base import Scanner
 from .code import Code
+from .emotion_detection import EmotionDetection
 from .gibberish import Gibberish
 from .invisible_text import InvisibleText
 from .language import Language
@@ -49,6 +50,9 @@ def get_scanner_by_name(scanner_name: str, scanner_config: dict | None = None) -
 
     if scanner_name == "Code":
         return Code(**scanner_config)
+
+    if scanner_name == "EmotionDetection":
+        return EmotionDetection(**scanner_config)
 
     if scanner_name == "Gibberish":
         return Gibberish(**scanner_config)
