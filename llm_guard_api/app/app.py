@@ -96,6 +96,21 @@ def _merge_configured_with_loaded_scanners(
     return merged_scanners
 
 
+def _get_debug_scanners_response(config: Config, config_file: str) -> DebugScannersResponse:
+    """Return scanners exactly as configured in scanners.yml."""
+    latest_config = get_config(config_file)
+    if latest_config is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not load scanner configuration from '{config_file}'.",
+        )
+
+    return DebugScannersResponse(
+        input_scanners=[scanner.model_dump() for scanner in latest_config.input_scanners],
+        output_scanners=[scanner.model_dump() for scanner in latest_config.output_scanners],
+    )
+
+
 async def _resolve_scanners_with_timeout(
     scanners_func: Callable,
     timeout_seconds: int,
@@ -299,33 +314,7 @@ def register_routes(
     async def read_scanners_configuration(
         _: Annotated[bool, Depends(check_auth)],
     ) -> DebugScannersResponse:
-        latest_config = get_config(config_file)
-        scanner_config = latest_config if latest_config is not None else config
-
-        loaded_input_scanners = await _resolve_scanners_with_timeout(
-            input_scanners_func,
-            config.app.scan_prompt_timeout,
-            "input",
-        )
-        loaded_output_scanners = await _resolve_scanners_with_timeout(
-            output_scanners_func,
-            config.app.scan_output_timeout,
-            "output",
-        )
-
-        input_scanners = _merge_configured_with_loaded_scanners(
-            [scanner.model_dump() for scanner in scanner_config.input_scanners],
-            loaded_input_scanners,
-        )
-        output_scanners = _merge_configured_with_loaded_scanners(
-            [scanner.model_dump() for scanner in scanner_config.output_scanners],
-            loaded_output_scanners,
-        )
-
-        return DebugScannersResponse(
-            input_scanners=input_scanners,
-            output_scanners=output_scanners,
-        )
+        return _get_debug_scanners_response(config, config_file)
 
     @app.post(
         "/analyze/output",
