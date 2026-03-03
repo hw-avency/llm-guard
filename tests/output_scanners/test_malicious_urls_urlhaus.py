@@ -36,3 +36,14 @@ def test_get_scanner_by_name_supports_urlhaus_scanner():
     scanner = get_scanner_by_name("MaliciousURLs_URLHaus")
 
     assert isinstance(scanner, MaliciousURLs_URLHaus)
+
+
+def test_get_scanner_by_name_ignores_stale_malicious_urls_params():
+    from llm_guard.output_scanners.util import get_scanner_by_name
+
+    scanner = get_scanner_by_name(
+        "MaliciousURLs_URLHaus",
+        {"threshold": 0.75, "use_onnx": True, "model_path": "/tmp/model"},
+    )
+
+    assert isinstance(scanner, MaliciousURLs_URLHaus)
