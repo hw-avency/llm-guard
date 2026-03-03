@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import requests
 
 from llm_guard.util import extract_urls, get_logger
@@ -17,6 +19,7 @@ class MaliciousURLs_URLHaus(Scanner):
         *,
         api_base_url: str = "https://threatintel-813066616888.europe-west3.run.app",
         timeout: int = 5,
+        **_: Any,
     ) -> None:
         self._api_base_url = api_base_url.rstrip("/")
         self._timeout = timeout
