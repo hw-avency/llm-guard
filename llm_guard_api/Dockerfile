@@ -10,7 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m -u 1000 user
+RUN useradd -m -u 1000 user && \
+    mkdir -p /home/user/app && \
+    chown -R user:user /home/user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
@@ -33,7 +35,8 @@ COPY --chown=user:user README.md ./
 COPY --chown=user:user app ./app
 
 # Install the project's dependencies
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+RUN rm -rf build && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir --no-build-isolation ".[cpu]"
 
 RUN python -m spacy download en_core_web_sm
