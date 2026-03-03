@@ -27,7 +27,7 @@ metrics:
 input_scanners:
   - type: Anonymize
     params:
-      use_faker: false
+      use_faker: true
       threshold: 0.75
       # model_path: "./distilbert_finetuned_ai4privacy_v2"
 #  - type: BanCode
