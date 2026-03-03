@@ -5,7 +5,7 @@ authors = [
   { name = "Protect AI", email = "community@protectai.com"}
 ]
 readme = "README.md"
-dynamic = ["version"]
+version = "0.3.16"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
@@ -46,9 +46,6 @@ gpu = [
 
 [tool.setuptools]
 packages = ["app"]
-
-[tool.setuptools.dynamic]
-version = {attr = "app.version.__version__"}
 
 [build-system]
 requires = ["setuptools", "wheel"]
