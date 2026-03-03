@@ -46,7 +46,7 @@ scanners_valid_counter = meter.create_counter(
 )
 
 
-class URLHausFallbackScanner:
+class MaliciousURLs_URLHaus:
     def __init__(
         self,
         *,
@@ -351,11 +351,11 @@ def _get_output_scanner(
             )
             return scanner_class(**scanner_params)
 
-        LOGGER.warning(
-            "URLHaus scanner unavailable in installed llm-guard package; using API fallback implementation",
+        LOGGER.info(
+            "Using built-in API URLHaus scanner implementation",
             scanner=scanner_name,
         )
-        return URLHausFallbackScanner(**scanner_config)
+        return MaliciousURLs_URLHaus(**scanner_config)
 
     try:
         return output_scanners.get_scanner_by_name(scanner_name, scanner_config)

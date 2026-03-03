@@ -28,7 +28,7 @@ def test_get_output_scanner_constructs_urlhaus_directly_when_available(monkeypat
     assert scanner.kwargs == {"api_base_url": "https://example.local", "threshold": 0.9}
 
 
-def test_get_output_scanner_uses_fallback_when_urlhaus_not_importable(monkeypatch):
+def test_get_output_scanner_uses_builtin_urlhaus_when_not_importable(monkeypatch):
     monkeypatch.setattr(
         "llm_guard_api.app.scanner.import_module",
         lambda _name: (_ for _ in ()).throw(ImportError("not installed")),
@@ -44,4 +44,4 @@ def test_get_output_scanner_uses_fallback_when_urlhaus_not_importable(monkeypatc
         vault=DummyVault(),
     )
 
-    assert type(scanner).__name__ == "URLHausFallbackScanner"
+    assert type(scanner).__name__ == "MaliciousURLs_URLHaus"
