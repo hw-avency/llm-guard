@@ -55,6 +55,26 @@ from .version import __version__
 LOGGER = structlog.getLogger(__name__)
 
 
+def _collect_scanner_results(results: list) -> tuple[bool, dict[str, float]]:
+    """Collect scanner scores from async scan task results."""
+    result_is_valid = True
+    results_score: dict[str, float] = {}
+
+    for result in results:
+        if isinstance(result, InputIsInvalid):
+            result_is_valid = False
+            results_score[result.scanner_name] = result.risk_score
+            continue
+
+        if isinstance(result, Exception):
+            raise result
+
+        scanner_name, risk_score = result
+        results_score[scanner_name] = risk_score
+
+    return result_is_valid, results_score
+
+
 async def _resolve_scanners_with_timeout(
     scanners_func: Callable,
     timeout_seconds: int,
@@ -331,31 +351,17 @@ def register_routes(
                 if type(scanner).__name__ not in request.scanners_suppress
             ]
 
-        result_is_valid = True
-        results_score = {}
-
         start_time = time.time()
         try:
             tasks = [
                 ascan_output(scanner, request.prompt, request.output) for scanner in output_scanners
             ]
             results = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=not config.app.scan_fail_fast),
+                asyncio.gather(*tasks, return_exceptions=True),
                 config.app.scan_output_timeout,
             )
 
-            for result in results:
-                if isinstance(result, InputIsInvalid):
-                    result_is_valid = False
-                    results_score[result.scanner_name] = result.risk_score
-
-                    continue
-
-                scanner_name, risk_score = result
-                results_score[scanner_name] = risk_score
-        except InputIsInvalid as e:
-            result_is_valid = False
-            results_score[e.scanner_name] = e.risk_score
+            result_is_valid, results_score = _collect_scanner_results(results)
         except asyncio.TimeoutError:
             raise HTTPException(
                 status_code=status.HTTP_408_REQUEST_TIMEOUT, detail="Request timeout."
@@ -466,29 +472,15 @@ def register_routes(
                 if type(scanner).__name__ not in request.scanners_suppress
             ]
 
-        result_is_valid = True
-        results_score = {}
-
         start_time = time.time()
         try:
             tasks = [ascan_prompt(scanner, request.prompt) for scanner in input_scanners]
             results = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=not config.app.scan_fail_fast),
+                asyncio.gather(*tasks, return_exceptions=True),
                 config.app.scan_prompt_timeout,
             )
 
-            for result in results:
-                if isinstance(result, InputIsInvalid):
-                    result_is_valid = False
-                    results_score[result.scanner_name] = result.risk_score
-
-                    continue
-
-                scanner_name, risk_score = result
-                results_score[scanner_name] = risk_score
-        except InputIsInvalid as e:
-            result_is_valid = False
-            results_score[e.scanner_name] = e.risk_score
+            result_is_valid, results_score = _collect_scanner_results(results)
         except asyncio.TimeoutError:
             raise HTTPException(
                 status_code=status.HTTP_408_REQUEST_TIMEOUT, detail="Request timeout."
