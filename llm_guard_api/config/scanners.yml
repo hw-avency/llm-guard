@@ -144,9 +144,9 @@ output_scanners:
 #  - type: LanguageSame
 #    params:
 #      model_max_length: 256
-  - type: MaliciousURLs
-    params:
-      threshold: 0.75
+#  - type: MaliciousURLs
+#    params:
+#      threshold: 0.75
   - type: MaliciousURLs_URLHaus
     params: {}
 #  - type: NoRefusal
