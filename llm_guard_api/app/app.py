@@ -2,7 +2,6 @@ import asyncio
 import concurrent.futures
 import os
 import time
-from pathlib import Path
 from typing import Annotated, Callable, List
 
 import structlog
@@ -56,10 +55,11 @@ LOGGER = structlog.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
-    config_file = _resolve_config_file()
+    config_file = os.getenv("CONFIG_FILE", "./config/scanners.yml")
+    if not config_file:
+        raise ValueError("Config file is required")
+
     config = get_config(config_file)
-    if config is None:
-        raise ValueError(f"Unable to load config file: {config_file}")
     log_level = config.app.log_level
     is_debug = log_level == "DEBUG"
     configure_logger(log_level, config.app.log_json)
@@ -86,26 +86,6 @@ def create_app() -> FastAPI:
     instrument_app(app)
 
     return app
-
-
-def _resolve_config_file() -> str:
-    config_file = os.getenv("CONFIG_FILE")
-    candidate_paths = [
-        config_file,
-        "/home/user/app/config/scanners.yml",
-        "./config/scanners.yml",
-    ]
-
-    for candidate in candidate_paths:
-        if not candidate:
-            continue
-
-        if Path(candidate).is_file():
-            return candidate
-
-    raise ValueError(
-        "No config file found. Set CONFIG_FILE or ensure ./config/scanners.yml exists."
-    )
 
 
 def _check_auth_function(auth_config: AuthConfig) -> callable:
