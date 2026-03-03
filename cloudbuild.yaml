@@ -18,4 +18,6 @@ options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
 
 substitutions:
-  _IMAGE_URI: europe-west3-docker.pkg.dev/$PROJECT_ID/llm-guard/llm-guard-api:latest
+  _IMAGE_URI: europe-west3-docker.pkg.dev/llm-guard-489015/llm-guard/llm-guard-api:latest
+
+  
