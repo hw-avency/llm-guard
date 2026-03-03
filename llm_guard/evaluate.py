@@ -48,18 +48,27 @@ def scan_prompt(
     start_time = time.time()
     for scanner in scanners:
         start_time_scanner = time.time()
-        sanitized_prompt, is_valid, risk_score = scanner.scan(sanitized_prompt)
+        scanner_name = type(scanner).__name__
+
+        if scanner_name == "Secrets":
+            _, is_valid, risk_score = scanner.scan(prompt)
+
+            if not is_valid:
+                sanitized_prompt, _, _ = scanner.scan(sanitized_prompt)
+        else:
+            sanitized_prompt, is_valid, risk_score = scanner.scan(sanitized_prompt)
+
         elapsed_time_scanner = time.time() - start_time_scanner
 
         LOGGER.debug(
             "Scanner completed",
-            scanner=type(scanner).__name__,
+            scanner=scanner_name,
             is_valid=is_valid,
             elapsed_time_seconds=round(elapsed_time_scanner, 6),
         )
 
-        results_valid[type(scanner).__name__] = is_valid
-        results_score[type(scanner).__name__] = risk_score
+        results_valid[scanner_name] = is_valid
+        results_score[scanner_name] = risk_score
         if fail_fast and not is_valid:
             break
 
