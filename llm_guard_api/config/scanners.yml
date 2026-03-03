@@ -69,12 +69,12 @@ input_scanners:
       threshold: 0.92
       match_type: truncate_head_tail
       model_max_length: 256
-  - type: Regex
-    params:
-       patterns: ["Bearer [A-Za-z0-9-._~+/]+"]
-       is_blocked: true
-       match_type: search
-       redact: true
+#  - type: Regex
+#    params:
+#       patterns: ["Bearer [A-Za-z0-9-._~+/]+"]
+#       is_blocked: true
+#       match_type: search
+#       redact: true
   - type: Secrets
     params:
       redact_mode: "all"
