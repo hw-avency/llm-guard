@@ -48,13 +48,16 @@ def get_input_scanners(scanners: List[ScannerConfig], vault: Vault) -> List[Inpu
     input_scanners_loaded = []
     for scanner in scanners:
         LOGGER.debug("Loading input scanner", scanner=scanner.type, **get_resource_utilization())
-        input_scanners_loaded.append(
-            _get_input_scanner(
-                scanner.type,
-                scanner.params,
-                vault=vault,
-            )
+        loaded_scanner = _get_input_scanner(
+            scanner.type,
+            scanner.params,
+            vault=vault,
         )
+        if loaded_scanner is None:
+            LOGGER.warning("Skipping input scanner", scanner=scanner.type)
+            continue
+
+        input_scanners_loaded.append(loaded_scanner)
 
     return input_scanners_loaded
 
@@ -66,13 +69,16 @@ def get_output_scanners(scanners: List[ScannerConfig], vault: Vault) -> List[Out
     output_scanners_loaded = []
     for scanner in scanners:
         LOGGER.debug("Loading output scanner", scanner=scanner.type, **get_resource_utilization())
-        output_scanners_loaded.append(
-            _get_output_scanner(
-                scanner.type,
-                scanner.params,
-                vault=vault,
-            )
+        loaded_scanner = _get_output_scanner(
+            scanner.type,
+            scanner.params,
+            vault=vault,
         )
+        if loaded_scanner is None:
+            LOGGER.warning("Skipping output scanner", scanner=scanner.type)
+            continue
+
+        output_scanners_loaded.append(loaded_scanner)
 
     return output_scanners_loaded
 
@@ -166,9 +172,15 @@ def _get_input_scanner(
         scanner_config["model"] = TOXICITY_MODEL
 
     if scanner_name == "EmotionDetection":
-        from llm_guard.input_scanners.emotion_detection import (
-            DEFAULT_MODEL as EMOTION_DETECTION_MODEL,
-        )
+        try:
+            from llm_guard.input_scanners.emotion_detection import (
+                DEFAULT_MODEL as EMOTION_DETECTION_MODEL,
+            )
+        except ModuleNotFoundError:
+            LOGGER.warning(
+                "EmotionDetection scanner is not available in the installed llm-guard package"
+            )
+            return None
 
         _configure_model(EMOTION_DETECTION_MODEL, scanner_config)
         scanner_config["model"] = EMOTION_DETECTION_MODEL
@@ -259,9 +271,15 @@ def _get_output_scanner(
         scanner_config["model"] = TOXICITY_MODEL
 
     if scanner_name == "EmotionDetection":
-        from llm_guard.input_scanners.emotion_detection import (
-            DEFAULT_MODEL as EMOTION_DETECTION_MODEL,
-        )
+        try:
+            from llm_guard.input_scanners.emotion_detection import (
+                DEFAULT_MODEL as EMOTION_DETECTION_MODEL,
+            )
+        except ModuleNotFoundError:
+            LOGGER.warning(
+                "EmotionDetection scanner is not available in the installed llm-guard package"
+            )
+            return None
 
         _configure_model(EMOTION_DETECTION_MODEL, scanner_config)
         scanner_config["model"] = EMOTION_DETECTION_MODEL
