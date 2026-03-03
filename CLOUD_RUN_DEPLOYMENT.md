@@ -17,7 +17,7 @@ This guide shows how to build the `llm_guard_api` container image and deploy it 
 
 ```bash
 export PROJECT_ID="YOUR_GCP_PROJECT_ID"
-export REGION="us-central1"
+export REGION="europe-west3" # Frankfurt
 export REPOSITORY="llm-guard"
 export IMAGE="llm-guard-api"
 export SERVICE="llm-guard-api"
