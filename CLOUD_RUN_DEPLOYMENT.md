@@ -51,9 +51,33 @@ Run this from the repository root (`/workspace/llm-guard`):
 ```bash
 gcloud builds submit \
   --project "$PROJECT_ID" \
+  --region "$REGION" \
   --tag "$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest" \
   ./llm_guard_api
 ```
+
+Yes — you can also fix this cleanly with a `cloudbuild.yaml`.
+This repository now includes `cloudbuild.yaml` with:
+
+- a Docker build step for `./llm_guard_api`, and
+- `options.defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET`.
+
+That logs option satisfies Cloud Build requirements when `--service-account` is used.
+
+```bash
+gcloud builds submit \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --config cloudbuild.yaml \
+  --substitutions _IMAGE_URI="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE:latest" \
+  --service-account "projects/$PROJECT_ID/serviceAccounts/YOUR_BUILD_SA@$PROJECT_ID.iam.gserviceaccount.com" \
+  .
+```
+
+Alternative valid log settings (if you do not use `defaultLogsBucketBehavior`) are:
+
+- `--gcs-log-dir="gs://YOUR_LOGS_BUCKET/cloudbuild-logs"` (explicit logs bucket), or
+- `--logging=CLOUD_LOGGING_ONLY` (or `--logging=NONE`).
 
 ## 6) Deploy to Cloud Run
 
