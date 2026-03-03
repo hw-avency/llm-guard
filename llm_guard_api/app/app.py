@@ -291,7 +291,13 @@ def register_routes(
     @app.get("/", tags=["Main"])
     @limiter.exempt
     async def read_root():
-        return {"name": "LLM Guard API"}
+        return {
+            "name": config.app.name,
+            "active": {
+                "input_scanners": [scanner.type for scanner in config.input_scanners],
+                "output_scanners": [scanner.type for scanner in config.output_scanners],
+            },
+        }
 
     @app.get("/healthz", tags=["Health"])
     @limiter.exempt
