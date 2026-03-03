@@ -1,6 +1,7 @@
 import asyncio
 import time
 from copy import deepcopy
+from importlib import import_module
 from typing import Dict, List, Optional
 
 import structlog
@@ -32,6 +33,7 @@ from .util import get_resource_utilization
 torch.set_num_threads(1)
 
 LOGGER = structlog.getLogger(__name__)
+
 
 meter = metrics.get_meter_provider().get_meter(__name__)
 scanners_valid_counter = meter.create_counter(
@@ -267,7 +269,24 @@ def _get_output_scanner(
         _configure_model(EMOTION_DETECTION_MODEL, scanner_config)
         scanner_config["model"] = EMOTION_DETECTION_MODEL
 
-    return output_scanners.get_scanner_by_name(scanner_name, scanner_config)
+    try:
+        return output_scanners.get_scanner_by_name(scanner_name, scanner_config)
+    except ValueError as error:
+        if scanner_name != "MaliciousURLs_URLHaus" or "Unknown scanner name" not in str(error):
+            raise
+
+        try:
+            scanner_class = getattr(
+                import_module("llm_guard.output_scanners.malicious_urls_urlhaus"),
+                "MaliciousURLs_URLHaus",
+            )
+            LOGGER.warning(
+                "Output scanner missing from util mapping, constructing scanner directly",
+                scanner=scanner_name,
+            )
+            return scanner_class(**scanner_config)
+        except (ImportError, AttributeError):
+            raise error
 
 
 class InputIsInvalid(Exception):
