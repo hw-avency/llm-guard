@@ -55,6 +55,26 @@ from .version import __version__
 LOGGER = structlog.getLogger(__name__)
 
 
+async def _resolve_scanners_with_timeout(
+    scanners_func: Callable,
+    timeout_seconds: int,
+    scanner_source: str,
+) -> list:
+    loop = asyncio.get_event_loop()
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        try:
+            return await asyncio.wait_for(
+                loop.run_in_executor(executor, scanners_func),
+                timeout=timeout_seconds,
+            )
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_408_REQUEST_TIMEOUT,
+                detail=f"Timed out while loading {scanner_source} scanners.",
+            ) from exc
+
+
 def create_app() -> FastAPI:
     config_file = os.getenv("CONFIG_FILE", "./config/scanners.yml")
     if not config_file:
@@ -223,8 +243,11 @@ def register_routes(
     async def submit_analyze_output(
         request: AnalyzeOutputRequest,
         _: Annotated[bool, Depends(check_auth)],
-        output_scanners: List[OutputScanner] = Depends(output_scanners_func),
     ) -> AnalyzeOutputResponse:
+        output_scanners = await _resolve_scanners_with_timeout(
+            output_scanners_func, config.app.scan_output_timeout, "output"
+        )
+
         LOGGER.debug(
             "Received analyze output request",
             request_prompt=request.prompt,
@@ -289,8 +312,11 @@ def register_routes(
     async def submit_scan_output(
         request: ScanOutputRequest,
         _: Annotated[bool, Depends(check_auth)],
-        output_scanners: List[OutputScanner] = Depends(output_scanners_func),
     ) -> ScanOutputResponse:
+        output_scanners = await _resolve_scanners_with_timeout(
+            output_scanners_func, config.app.scan_output_timeout, "output"
+        )
+
         LOGGER.debug(
             "Received scan output request",
             request_prompt=request.prompt,
@@ -360,8 +386,11 @@ def register_routes(
         request: AnalyzePromptRequest,
         _: Annotated[bool, Depends(check_auth)],
         response: Response,
-        input_scanners: List[InputScanner] = Depends(input_scanners_func),
     ) -> AnalyzePromptResponse:
+        input_scanners = await _resolve_scanners_with_timeout(
+            input_scanners_func, config.app.scan_prompt_timeout, "input"
+        )
+
         LOGGER.debug("Received analyze prompt request", request_prompt=request.prompt)
 
         if request.scanners_suppress is not None and len(request.scanners_suppress) > 0:
@@ -422,8 +451,11 @@ def register_routes(
     async def submit_scan_prompt(
         request: ScanPromptRequest,
         _: Annotated[bool, Depends(check_auth)],
-        input_scanners: List[InputScanner] = Depends(input_scanners_func),
     ) -> ScanPromptResponse:
+        input_scanners = await _resolve_scanners_with_timeout(
+            input_scanners_func, config.app.scan_prompt_timeout, "input"
+        )
+
         LOGGER.debug("Received scan prompt request", request_prompt=request.prompt)
 
         if request.scanners_suppress is not None and len(request.scanners_suppress) > 0:
@@ -509,4 +541,13 @@ def register_routes(
         response = {"message": "Validation failed", "details": exc.errors()}
         return JSONResponse(
             jsonable_encoder(response), status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request, exc):
+        LOGGER.exception("Unhandled exception", exception=exc)
+
+        return JSONResponse(
+            {"message": "Internal server error", "details": None},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
