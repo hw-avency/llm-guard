@@ -5,6 +5,7 @@ from copy import deepcopy
 from importlib import import_module
 from typing import Dict, List, Optional
 
+import requests
 import structlog
 import torch
 from opentelemetry import metrics
@@ -26,6 +27,7 @@ from llm_guard.output_scanners.bias import DEFAULT_MODEL as BIAS_MODEL
 from llm_guard.output_scanners.malicious_urls import DEFAULT_MODEL as MALICIOUS_URLS_MODEL
 from llm_guard.output_scanners.no_refusal import DEFAULT_MODEL as NO_REFUSAL_MODEL
 from llm_guard.output_scanners.relevance import MODEL_EN_BGE_SMALL as RELEVANCE_MODEL
+from llm_guard.util import extract_urls
 from llm_guard.vault import Vault
 
 from .config import ScannerConfig
@@ -42,6 +44,49 @@ scanners_valid_counter = meter.create_counter(
     unit="1",
     description="measures the number of valid scanners",
 )
+
+
+class URLHausFallbackScanner:
+    def __init__(
+        self,
+        *,
+        api_base_url: str = "https://threatintel-813066616888.europe-west3.run.app",
+        timeout: int = 5,
+        **_: Dict,
+    ):
+        self._api_base_url = api_base_url.rstrip("/")
+        self._timeout = timeout
+
+    def _is_malicious(self, url: str) -> bool:
+        try:
+            response = requests.get(
+                f"{self._api_base_url}/api/check",
+                params={"url": url},
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            return bool(payload.get("found", False))
+        except (requests.RequestException, ValueError) as error:
+            LOGGER.warning("Failed to validate URL via URLHaus API", url=url, error=str(error))
+            return False
+
+    def scan(self, prompt: str, output: str) -> tuple[str, bool, float]:
+        if output.strip() == "":
+            return output, True, -1.0
+
+        urls = extract_urls(output)
+        if len(urls) == 0:
+            return output, True, -1.0
+
+        LOGGER.debug("Found URLs in output", urls_count=len(urls))
+
+        for url in urls:
+            if self._is_malicious(url):
+                LOGGER.warning("Detected malicious URL via URLHaus API", url=url)
+                return output, False, 1.0
+
+        return output, True, -1.0
 
 
 def get_input_scanners(scanners: List[ScannerConfig], vault: Vault) -> List[InputScanner]:
@@ -306,10 +351,11 @@ def _get_output_scanner(
             )
             return scanner_class(**scanner_params)
 
-        raise ValueError(
-            "Scanner 'MaliciousURLs_URLHaus' is configured but is unavailable in the installed llm-guard package. "
-            "Please install a llm-guard version that includes llm_guard.output_scanners.malicious_urls_urlhaus."
+        LOGGER.warning(
+            "URLHaus scanner unavailable in installed llm-guard package; using API fallback implementation",
+            scanner=scanner_name,
         )
+        return URLHausFallbackScanner(**scanner_config)
 
     try:
         return output_scanners.get_scanner_by_name(scanner_name, scanner_config)
