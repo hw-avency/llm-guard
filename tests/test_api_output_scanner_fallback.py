@@ -39,7 +39,12 @@ def test_get_output_scanner_constructs_urlhaus_directly_when_util_mapping_missin
     assert scanner.kwargs == {"api_base_url": "https://example.local", "threshold": 0.9}
 
 
-def test_get_output_scanner_raises_original_error_when_urlhaus_not_importable(monkeypatch):
+class DummyMaliciousURLsScanner:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+
+def test_get_output_scanner_falls_back_to_malicious_urls_when_urlhaus_not_importable(monkeypatch):
     def fake_get_scanner_by_name(scanner_name, _scanner_config):
         raise ValueError(f"Unknown scanner name: {scanner_name}!")
 
@@ -51,6 +56,20 @@ def test_get_output_scanner_raises_original_error_when_urlhaus_not_importable(mo
         "llm_guard_api.app.scanner.import_module",
         lambda _name: (_ for _ in ()).throw(ImportError("not installed")),
     )
+    monkeypatch.setattr(
+        "llm_guard_api.app.scanner.output_scanners.MaliciousURLs",
+        DummyMaliciousURLsScanner,
+    )
 
-    with pytest.raises(ValueError, match="Unknown scanner name: MaliciousURLs_URLHaus!"):
-        _get_output_scanner("MaliciousURLs_URLHaus", {}, vault=DummyVault())
+    scanner = _get_output_scanner(
+        "MaliciousURLs_URLHaus",
+        {
+            "threshold": 0.8,
+            "api_base_url": "https://urlhaus.example",
+            "timeout": 3,
+        },
+        vault=DummyVault(),
+    )
+
+    assert isinstance(scanner, DummyMaliciousURLsScanner)
+    assert scanner.kwargs == {"threshold": 0.8}
