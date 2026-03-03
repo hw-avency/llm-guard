@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -38,3 +38,12 @@ class AnalyzeOutputRequest(ScanOutputRequest):
 
 class AnalyzeOutputResponse(ScanOutputResponse):
     sanitized_output: str = Field(title="Sanitized output")
+
+
+class DebugScannersResponse(BaseModel):
+    input_scanners: List[Dict[str, Any]] = Field(
+        title="Configured input scanners",
+    )
+    output_scanners: List[Dict[str, Any]] = Field(
+        title="Configured output scanners",
+    )
