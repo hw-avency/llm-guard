@@ -75,6 +75,26 @@ def _collect_scanner_results(results: list) -> tuple[bool, dict[str, float]]:
     return result_is_valid, results_score
 
 
+def _merge_configured_with_loaded_scanners(
+    configured_scanners: list[dict], loaded_scanners: list
+) -> list[dict]:
+    """Return configured scanners augmented with scanner instances that were loaded in runtime."""
+    merged_scanners = list(configured_scanners)
+    configured_types = {
+        scanner.get("type") for scanner in configured_scanners if scanner.get("type") is not None
+    }
+
+    for scanner in loaded_scanners:
+        scanner_type = type(scanner).__name__
+        if scanner_type in configured_types:
+            continue
+
+        merged_scanners.append({"type": scanner_type, "params": {}})
+        configured_types.add(scanner_type)
+
+    return merged_scanners
+
+
 async def _resolve_scanners_with_timeout(
     scanners_func: Callable,
     timeout_seconds: int,
@@ -252,9 +272,29 @@ def register_routes(
         latest_config = get_config(config_file)
         scanner_config = latest_config if latest_config is not None else config
 
+        loaded_input_scanners = await _resolve_scanners_with_timeout(
+            input_scanners_func,
+            config.app.scan_prompt_timeout,
+            "input",
+        )
+        loaded_output_scanners = await _resolve_scanners_with_timeout(
+            output_scanners_func,
+            config.app.scan_output_timeout,
+            "output",
+        )
+
+        input_scanners = _merge_configured_with_loaded_scanners(
+            [scanner.model_dump() for scanner in scanner_config.input_scanners],
+            loaded_input_scanners,
+        )
+        output_scanners = _merge_configured_with_loaded_scanners(
+            [scanner.model_dump() for scanner in scanner_config.output_scanners],
+            loaded_output_scanners,
+        )
+
         return DebugScannersResponse(
-            input_scanners=[scanner.model_dump() for scanner in scanner_config.input_scanners],
-            output_scanners=[scanner.model_dump() for scanner in scanner_config.output_scanners],
+            input_scanners=input_scanners,
+            output_scanners=output_scanners,
         )
 
     @app.post(
