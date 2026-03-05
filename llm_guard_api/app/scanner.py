@@ -36,6 +36,7 @@ from .util import get_resource_utilization
 torch.set_num_threads(1)
 
 LOGGER = structlog.getLogger(__name__)
+REPLACEMENT_STR = "[Removed_Malicious_URL]"
 
 
 meter = metrics.get_meter_provider().get_meter(__name__)
@@ -81,10 +82,17 @@ class MaliciousURLs_URLHaus:
 
         LOGGER.debug("Found URLs in output", urls_count=len(urls))
 
+        sanitized_output = output
+        detected_malicious_url = False
+
         for url in urls:
             if self._is_malicious(url):
                 LOGGER.warning("Detected malicious URL via URLHaus API", url=url)
-                return output, False, 1.0
+                sanitized_output = sanitized_output.replace(url, REPLACEMENT_STR)
+                detected_malicious_url = True
+
+        if detected_malicious_url:
+            return sanitized_output, False, 1.0
 
         return output, True, -1.0
 

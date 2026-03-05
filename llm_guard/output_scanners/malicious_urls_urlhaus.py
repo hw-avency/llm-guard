@@ -9,6 +9,7 @@ from llm_guard.util import extract_urls, get_logger
 from .base import Scanner
 
 LOGGER = get_logger()
+REPLACEMENT_STR = "[Removed_Malicious_URL]"
 
 
 class MaliciousURLs_URLHaus(Scanner):
@@ -49,9 +50,16 @@ class MaliciousURLs_URLHaus(Scanner):
 
         LOGGER.debug("Found URLs in the output", len=len(urls))
 
+        sanitized_output = output
+        detected_malicious_url = False
+
         for url in urls:
             if self.is_malicious(url):
                 LOGGER.warning("Detected malicious URL via URLHaus API", url=url)
-                return output, False, 1.0
+                sanitized_output = sanitized_output.replace(url, REPLACEMENT_STR)
+                detected_malicious_url = True
+
+        if detected_malicious_url:
+            return sanitized_output, False, 1.0
 
         return output, True, -1.0
