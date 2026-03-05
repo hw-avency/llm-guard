@@ -6,14 +6,20 @@ from llm_guard.output_scanners.malicious_urls_urlhaus import MaliciousURLs_URLHa
 
 
 @pytest.mark.parametrize(
-    "output,found,expected_valid,expected_score",
+    "output,found,expected_output,expected_valid,expected_score",
     [
-        ("No links in this output.", False, True, -1.0),
-        ("Visit https://example.com.", False, True, -1.0),
-        ("Visit http://222.134.175.94:48838/i", True, False, 1.0),
+        ("No links in this output.", False, "No links in this output.", True, -1.0),
+        ("Visit https://example.com.", False, "Visit https://example.com.", True, -1.0),
+        (
+            "Visit http://222.134.175.94:48838/i",
+            True,
+            "Visit [Removed_Malicious_URL]",
+            False,
+            1.0,
+        ),
     ],
 )
-def test_scan(output, found, expected_valid, expected_score, monkeypatch):
+def test_scan(output, found, expected_output, expected_valid, expected_score, monkeypatch):
     scanner = MaliciousURLs_URLHaus()
 
     response = Mock()
@@ -25,7 +31,7 @@ def test_scan(output, found, expected_valid, expected_score, monkeypatch):
 
     sanitized_output, valid, score = scanner.scan("", output)
 
-    assert sanitized_output == output
+    assert sanitized_output == expected_output
     assert valid == expected_valid
     assert score == expected_score
 
