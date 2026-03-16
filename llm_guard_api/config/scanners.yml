@@ -67,7 +67,8 @@ input_scanners:
   - type: PromptInjection
     params:
       threshold: 1
-      match_type: truncate_head_tail
+#     match_type: truncate_head_tail
+      match_type: full
       model_max_length: 256
 #  - type: Regex
 #    params:
